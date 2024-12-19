@@ -79,3 +79,40 @@ async def create_posts(post: Post):
     new_post = cursor.fetchone()
     conn.commit()
     return {"data": new_post}
+
+
+@app.get("/posts/{id}", status_code=201)
+async def get_post(id: int):
+    cursor.execute(
+        """SELECT * FROM posts WHERE id = %s""",
+        (id,),
+    )
+    post = cursor.fetchone()
+    if not post:
+        raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
+    return {"data": post}
+
+
+@app.delete("/posts/{id}", status_code=204)
+async def delete_post(id: int):
+    cursor.execute(
+        """DELETE FROM posts WHERE id = %s RETURNING *""",
+        (str(id),),
+    )
+    post = cursor.fetchone()
+    if not post:
+        raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
+    conn.commit()
+
+
+@app.put("/posts/{id}", status_code=201)
+async def update_post(id: int, post: Post):
+    cursor.execute(
+        """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
+        (post.title, post.content, post.published, str(id)),
+    )
+    post = cursor.fetchone()
+    if not post:
+        raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
+    conn.commit()
+    return {"data": post}

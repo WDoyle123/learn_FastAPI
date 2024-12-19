@@ -18,6 +18,11 @@ CREATE TABLE IF NOT EXISTS posts (
 
 echo "Table 'posts' created successfully."
 
+psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -c "DELETE FROM posts;"
+psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -c "ALTER SEQUENCE posts_id_seq RESTART WITH 1;"
+
+echo "Table 'posts' cleared and sequence reset."
+
 psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -c "
 INSERT INTO posts (title, content, published) VALUES
 ('title0', 'this is content 0', FALSE),
