@@ -1,3 +1,3 @@
 cd ../
 source venv/bin/activate
-uvicorn app.main:app --reload
+uvicorn app.orm_main:app --reload

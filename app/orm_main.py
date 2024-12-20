@@ -3,10 +3,27 @@ from random import randrange
 from typing import Optional
 
 import psycopg
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Depends
 from fastapi.params import Body
 from psycopg.rows import dict_row
 from pydantic import BaseModel
+
+from sqlalchemy.orm import Session
+
+from . import models
+from .db import SessionLocal, engine
+
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 def load_secrets_from_file(file_path):
@@ -18,8 +35,6 @@ def load_secrets_from_file(file_path):
 
 
 load_secrets_from_file(".secrets.sh")
-
-app = FastAPI()
 
 
 class Post(BaseModel):
@@ -46,22 +61,13 @@ while True:
         time.sleep(2)
 
 
-def find_post(id):
-    for p in my_posts:
-        if p["id"] == id:
-            return p
-
-
-def find_index_post(id):
-    for i, p in enumerate(my_posts):
-        if p["id"] == id:
-            return i
-
-
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
+@app.get("/sqlalchemy")
+async def test_posts(db: Session = Depends(get_db)):
+    return {"status": "success"}
 
 @app.get("/posts")
 async def get_posts():
