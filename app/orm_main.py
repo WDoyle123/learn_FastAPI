@@ -3,27 +3,17 @@ from random import randrange
 from typing import Optional
 
 import psycopg
-from fastapi import FastAPI, HTTPException, Response, Depends
+from fastapi import Depends, FastAPI, HTTPException, Response
 from fastapi.params import Body
 from psycopg.rows import dict_row
-from pydantic import BaseModel
-
 from sqlalchemy.orm import Session
 
-from . import models
-from .db import SessionLocal, engine
+from . import models, schemas
+from .db import engine, get_db
 
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 def load_secrets_from_file(file_path):
@@ -37,88 +27,52 @@ def load_secrets_from_file(file_path):
 load_secrets_from_file(".secrets.sh")
 
 
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
-    rating: Optional[int] = None
-
-
-while True:
-    try:
-        conn = psycopg.connect(
-            host=os.getenv("DB_HOST"),
-            port=os.getenv("DB_PORT"),
-            dbname=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-        )
-        cursor = conn.cursor(row_factory=dict_row)
-        print("Database Connection was Successful")
-        break
-    except Exception as e:
-        print(f"Connection to DB failed: {e}")
-        time.sleep(2)
-
-
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
-@app.get("/sqlalchemy")
-async def test_posts(db: Session = Depends(get_db)):
-    return {"status": "success"}
 
 @app.get("/posts")
-async def get_posts():
-    cursor.execute(""" SELECT * FROM posts """)
-    posts = cursor.fetchall()
+async def get_posts(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
     return {"data": posts}
 
 
 @app.post("/posts", status_code=201)
-async def create_posts(post: Post):
-    cursor.execute(
-        """INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """,
-        (post.title, post.content, post.published),
-    )
-    new_post = cursor.fetchone()
-    conn.commit()
-    return {"data": new_post}
+async def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
+    new_post = models.Post(**post.dict())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    return new_post
 
 
 @app.get("/posts/{id}", status_code=201)
-async def get_post(id: int):
-    cursor.execute(
-        """SELECT * FROM posts WHERE id = %s""",
-        (id,),
-    )
-    post = cursor.fetchone()
+async def get_post(id: int, db: Session = Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
-    return {"data": post}
+    return post
 
 
 @app.delete("/posts/{id}", status_code=204)
-async def delete_post(id: int):
-    cursor.execute(
-        """DELETE FROM posts WHERE id = %s RETURNING *""",
-        (str(id),),
-    )
-    post = cursor.fetchone()
+async def delete_post(id: int, db: Session = Depends(get_db)):
+    post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
-    conn.commit()
+    db.delete(post)
+    db.commit()
+    return Response(status_code=204)
 
 
 @app.put("/posts/{id}", status_code=201)
-async def update_post(id: int, post: Post):
-    cursor.execute(
-        """UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",
-        (post.title, post.content, post.published, str(id)),
-    )
-    post = cursor.fetchone()
+async def update_post(
+    id: int, update_post: schemas.PostCreate, db: Session = Depends(get_db)
+):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
-    conn.commit()
-    return {"data": post}
+    post_query.update(update_post.dict())
+    db.commit()
+    return {"data": post_query.first()}
