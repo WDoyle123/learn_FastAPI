@@ -1,6 +1,6 @@
 import os
 from random import randrange
-from typing import Optional, List
+from typing import List, Optional
 
 import psycopg
 from fastapi import Depends, FastAPI, HTTPException, Response
@@ -76,3 +76,18 @@ async def update_post(
     post_query.update(update_post.dict())
     db.commit()
     return post_query.first()
+
+
+@app.get("/users", status_code=200, response_model=List[schemas.UserOut])
+async def get_users(db: Session = Depends(get_db)):
+    users = db.query(models.User).all()
+    return users
+
+
+@app.post("/users", status_code=201, response_model=schemas.UserOut)
+async def create_users(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
