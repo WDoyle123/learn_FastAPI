@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
 from sqlalchemy.orm import Session
@@ -10,8 +10,20 @@ router = APIRouter(prefix="/posts", tags=["Posts"])
 
 
 @router.get("/", response_model=List[schemas.Post])
-async def get_posts(db: Session = Depends(get_db)):
-    posts = db.query(models.Post).all()
+async def get_posts(
+    db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user),
+    limit: int = 10,
+    skip: int = 0,
+    search: Optional[str] = "",
+):
+    posts = (
+        db.query(models.Post)
+        .filter(models.Post.title.contains(search))
+        .limit(limit)
+        .offset(skip)
+        .all()
+    )
     return posts
 
 
@@ -21,7 +33,7 @@ async def create_posts(
     db: Session = Depends(get_db),
     current_user: int = Depends(oauth2.get_current_user),
 ):
-    new_post = models.Post(**post.dict())
+    new_post = models.Post(user_id=current_user.id, **post.dict())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -46,11 +58,17 @@ async def delete_post(
     current_user: int = Depends(oauth2.get_current_user),
 ):
     post = db.query(models.Post).filter(models.Post.id == id).first()
+
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
+
+    if post.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorised to perform requested action"
+        )
+
     db.delete(post)
     db.commit()
-    return Response(status_code=204)
 
 
 @router.put("/{id}", status_code=201, response_model=schemas.Post)
@@ -64,6 +82,12 @@ async def update_post(
     post = post_query.first()
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
+
+    if post.user_id != get_current_user.id:
+        raise HTTPException(
+            status_code=403, detail="Not authorised to perform requested action"
+        )
+
     post_query.update(update_post.dict())
     db.commit()
     return post_query.first()
