@@ -4,7 +4,7 @@ from fastapi import FastAPI
 
 from . import models, schemas
 from .db import engine, get_db
-from .routers import post, user
+from .routers import post, user, auth
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -23,6 +23,8 @@ load_secrets_from_file(".secrets.sh")
 
 app.include_router(post.router)
 app.include_router(user.router)
+app.include_router(auth.router)
+
 
 
 @app.get("/")

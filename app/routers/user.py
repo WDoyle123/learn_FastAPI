@@ -6,9 +6,7 @@ from sqlalchemy.orm import Session
 from .. import models, schemas, utils
 from ..db import engine, get_db
 
-router = APIRouter(
-    prefix="/users"
-)
+router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.get("/", status_code=200, response_model=List[schemas.UserOut])
