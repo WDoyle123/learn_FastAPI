@@ -33,7 +33,7 @@ async def create_posts(
     db: Session = Depends(get_db),
     current_user: int = Depends(oauth2.get_current_user),
 ):
-    new_post = models.Post(user_id=current_user.id, **post.dict())
+    new_post = models.Post(owner_id=current_user.id, **post.dict())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -62,7 +62,7 @@ async def delete_post(
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
 
-    if post.user_id != current_user.id:
+    if post.owner_id != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not authorised to perform requested action"
         )
@@ -83,7 +83,7 @@ async def update_post(
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
 
-    if post.user_id != get_current_user.id:
+    if post.owner_id != get_current_user.id:
         raise HTTPException(
             status_code=403, detail="Not authorised to perform requested action"
         )
