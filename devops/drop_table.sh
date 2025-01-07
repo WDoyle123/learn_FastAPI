@@ -2,9 +2,10 @@
 
 set -e
 
-source ../.secrets.sh
+source ../.env
 
-export PGPASSWORD="$DB_PASSWORD"
+export PGPASSWORD="$DATABASE_PASSWORD"
 
-psql -U "$DB_USER" -d "$DB_NAME" -h "$DB_HOST" -p "$DB_PORT" -c "DROP TABLE posts;"
+psql -U "$DATABASE_USERNAME" -d "$DATABASE_NAME" -h "$DATABASE_HOST" -p "$DATABASE_PORT" -c "DROP TABLE users CASCADE;"
+
 
