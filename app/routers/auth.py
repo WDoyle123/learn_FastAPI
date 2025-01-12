@@ -7,7 +7,7 @@ from .. import db, models, oauth2, schemas, utils
 router = APIRouter(tags=["Authentication"])
 
 
-@router.post("/login", status_code=201, response_model=schemas.Token)
+@router.post("/login", status_code=200, response_model=schemas.Token)
 def login(
     user_credentials: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(db.get_db),

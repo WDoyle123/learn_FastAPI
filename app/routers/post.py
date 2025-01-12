@@ -45,10 +45,11 @@ async def create_posts(
     return new_post
 
 
-@router.get("/{id}", status_code=201, response_model=schemas.PostOut)
+@router.get("/{id}", status_code=200, response_model=schemas.PostOut)
 async def get_post(
     id: int,
     db: Session = Depends(get_db),
+    current_user: int = Depends(oauth2.get_current_user),
 ):
     post = (
         db.query(models.Post, func.count(models.Vote.post_id).label("votes"))
@@ -95,7 +96,7 @@ async def update_post(
     if not post:
         raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
 
-    if post.owner_id != get_current_user.id:
+    if post.owner_id != current_user.id:
         raise HTTPException(
             status_code=403, detail="Not authorised to perform requested action"
         )
