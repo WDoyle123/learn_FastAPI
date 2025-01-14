@@ -52,6 +52,7 @@ def test_user(client):
     new_user["password"] = user_data["password"]
     return new_user
 
+
 @pytest.fixture
 def test_user2(client):
     user_data = {"email": "example456@gmail.com", "password": "password"}
@@ -60,6 +61,7 @@ def test_user2(client):
     new_user = response.json()
     new_user["password"] = user_data["password"]
     return new_user
+
 
 @pytest.fixture
 def token(test_user):
@@ -95,7 +97,6 @@ def test_posts(test_user, session, test_user2):
             "content": "third content",
             "owner_id": test_user2["id"],
         },
-
     ]
 
     def create_post_model(post):
@@ -107,3 +108,10 @@ def test_posts(test_user, session, test_user2):
     session.add_all(posts)
     session.commit()
     return session.query(models.Post).all()
+
+
+@pytest.fixture()
+def test_vote(test_posts, session, test_user):
+    new_vote = models.Vote(post_id=test_posts[3].id, user_id=test_user["id"])
+    session.add(new_vote)
+    session.commit()

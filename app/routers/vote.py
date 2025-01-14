@@ -40,9 +40,9 @@ def vote(
 
     else:
         if not found_vote:
-            raise HTTPException(status_code=404, details=f"Vote does not exist")
+            raise HTTPException(status_code=404, detail=f"Vote does not exist")
 
-        vote_query.delete(sychronize_session=False)
+        vote_query.delete(synchronize_session=False)
         db.commit()
 
         return {"message": "successfully delete vote"}
